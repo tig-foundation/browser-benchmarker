@@ -118,6 +118,7 @@ class BrowserBenchmarker(BaseBenchmarker):
     ):
         self._num_attempts = 0
         self.data = asDict(data)
+        self.data["block"]["datetime_added"] = self.data["block"]["datetime_added"].isoformat()
         self.current_benchmark = asDict(params)
         self.current_benchmark["datetime_end"] = datetime_end.astimezone().isoformat()
         task = asyncio.create_task(super()._doBenchmark(data, params, modules, datetime_end, proofs))
@@ -160,22 +161,6 @@ async def getBenchmarkerStatus():
             selected_algorithms=b.selected_algorithms,
             pending_benchmarks=b.pending_benchmarks
         )
-        # return dict(
-        #     running=True,
-        #     current_benchmark=dict(
-        #         status=b.status,
-        #         start=None if b.benchmark_start is None else b.benchmark_start.isoformat(),
-        #         end=None if b.benchmark_end is None else b.benchmark_end.isoformat(),
-        #         challenge_id=b.challenge_id,
-        #         algorithm_id=b.algorithm_id,
-        #         difficulty=b.difficulty,
-        #     ),
-        #     round_config=b.round_config,
-        #     summary=b.summary,
-        #     all_algorithms=b.all_algorithms,
-        #     selected_algorithms=b.selected_algorithms,
-        #     recent_benchmarks=b.recent_benchmarks,
-        # )
 
 async def startBenchmarker(player_id, api_key):
     if (b := G.get("benchmarker")) is None:
