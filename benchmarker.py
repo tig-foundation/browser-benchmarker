@@ -76,17 +76,18 @@ class BrowserBenchmarker(BaseBenchmarker):
         ]
         difficulty_params = next(c.difficulty_params for c in data.block.config.challenges if c.id == picked_challenge_id)
         if len(frontier_0):
-            picked_difficulty = randomDifficultyOnFrontier(frontier_0, difficulty_params)
-            if sum(fp.num_solutions for fp in data.frontier_points if fp.frontier_idx is not None) >= data.block.config.qualifiers.num_cutoff:
-                picked_difficulty = [
-                    min(p.max, v + random.randint(0, 1)) 
-                    for p, v in zip(difficulty_params, picked_difficulty)
-                ]
-            else:
-                picked_difficulty = [
-                    max(p.min, v - random.randint(0, 1)) 
-                    for p, v in zip(difficulty_params, picked_difficulty)
-                ]
+            rand_difficulty_on_frontier_0 = randomDifficultyOnFrontier(frontier_0, difficulty_params)
+            num_qualifiers = sum(
+                fp.num_solutions for fp in data.frontier_points 
+                if fp.frontier_idx is not None and fp.challenge_id == picked_challenge_id
+            )
+            percent_of_cutoff = num_qualifiers / data.block.config.qualifiers.num_cutoff - 1.0
+            # increment/decrement difficulty by up to 5 based on how close we are to the cutoff
+            max_delta = min(5, int(abs(percent_of_cutoff / 0.1)))
+            picked_difficulty = [
+                max(p.min, min(p.max, v + (-1) ** (percent_of_cutoff < 0) * random.randint(0, max_delta)))
+                for p, v in zip(difficulty_params, rand_difficulty_on_frontier_0)
+            ]
         else:
             picked_difficulty = [p.min for p in difficulty_params]
         return BenchmarkParams(
