@@ -74,6 +74,11 @@ class BrowserBenchmarker(BaseBenchmarker):
             fp for fp in data.frontier_points
             if fp.frontier_idx == 0 and fp.challenge_id == picked_challenge_id # frontier_idx 0 is the easiest frontier
         ]
+        # assume rejected because of time out
+        timed_out_difficulties = [
+            b.difficulty for b in data.benchmarks
+            if b.challenge_id == picked_challenge_id and b.rejected
+        ]
         difficulty_params = next(c.difficulty_params for c in data.block.config.challenges if c.id == picked_challenge_id)
         if len(frontier_0):
             rand_difficulty_on_frontier_0 = randomDifficultyOnFrontier(frontier_0, difficulty_params)
@@ -84,10 +89,23 @@ class BrowserBenchmarker(BaseBenchmarker):
             percent_of_cutoff = num_qualifiers / data.block.config.qualifiers.num_cutoff - 1.0
             # increment/decrement difficulty by up to 5 based on how close we are to the cutoff
             max_delta = min(5, int(abs(percent_of_cutoff / 0.1)))
-            picked_difficulty = [
-                max(p.min, min(p.max, v + (-1) ** (percent_of_cutoff < 0) * random.randint(0, max_delta)))
-                for p, v in zip(difficulty_params, rand_difficulty_on_frontier_0)
+            possible_difficulties = [
+                [
+                    v + (-1) ** (percent_of_cutoff < 0) * d
+                    for v, d in zip(rand_difficulty_on_frontier_0, delta)
+                ]
+                for delta in itertools.product(*[range(max_delta + 1) for _ in range(len(difficulty_params))])
             ]
+            # filter out difficulties that are out of bounds or are likely to time out
+            possible_difficulties = [
+                d for d in possible_difficulties
+                if all(p.min <= v <= p.max for p, v in zip(difficulty_params, d)) and
+                all(
+                    not all(v1 >= v2 for v1, v2 in zip(d, d2))
+                    for d2 in timed_out_difficulties
+                )
+            ]
+            picked_difficulty = random.choice(possible_difficulties or [rand_difficulty_on_frontier_0])
         else:
             picked_difficulty = [p.min for p in difficulty_params]
         return BenchmarkParams(
