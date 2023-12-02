@@ -6,6 +6,7 @@ from datetime import datetime
 import asyncio
 import random
 import numpy as np
+import itertools
 from js import TIG
 
 
